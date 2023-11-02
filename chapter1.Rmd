@@ -1,3 +1,8 @@
+---
+output:
+  html_document: default
+  word_document: default
+---
 
 # About the project
 
@@ -9,5 +14,7 @@
 date()
 
 ```
-The text continues here.
-
+The course started quite well and *smoothly*. I like the introduction by professor Kimmo and generally everything looks quite scheduled and organised. From the course I expect to improve my bioinformatic and data science related knowledge. I already have quite a bit of $R$ skills but I'm sure I will improve those as well with this course: I really like programming and $R$ is a quite cool language. For sure, it shines when used with Rstudio. I actually didn't know about the Git communication! \
+I heard about this course from a colleague of mine. \
+\
+Here's the link to my [GitHub repository](https://github.com/marchigg/IODS-project.git}).
