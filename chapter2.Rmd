@@ -1,14 +1,159 @@
-# Insert chapter 2 title here
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
 
-*Describe the work you have done this week and summarize your learning!.*
+# Regression and model validation
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+*Describe the work you have done this week and summarize your learning.*
+
+-   Describe your work and results clearly.
+-   Assume the reader has an introductory course level understanding of
+    writing and reading R code as well as statistical methods.
+-   Assume the reader has no previous knowledge of your data or the more
+    advanced methods you are using.
 
 ```{r}
 date()
+
+# load the GGally and ggplot2 libraries
+library(GGally)
+library(ggplot2)
 ```
 
-Here we go again...
-testing...
+### Description of the data
+
+```{r}
+# read students2014 dataset after manipulation (from data wrangling)
+data <- read.csv("analysis.csv", header = T, row.names = 1)
+
+# explore the dataset
+str(data)
+dim(data)
+```
+
+The dataset is composed of 166 lines and 7 columns.\
+This dataset is a subset of a bigger one reporting the result of student
+survey. Each observation (i.e. row) is a student and the variables (i.e.
+columns) represent statistics of the students. Variables are:
+
+-   *gender*, categorical (M or F), reporting gender of student.
+-   *age*, numeric, reporting age of student.
+-   *attitude*, numeric, reporing a sum of 10 questions related to
+    students attitude towards statistics, each measured on the [Likert
+    scale](https://en.wikipedia.org/wiki/Likert_scale) (1-5)
+-   *deep*, numeric, is a combination variable of 12 deep learning
+    questions.
+-   *stra*, numeric, is a combination variable of 8 strategic learning
+    questions.
+-   *surf*, numeric, is a combination variable of 12 "surface"
+    questions.
+-   *Points*, numeric, reports the exam points.
+
+### Visualization of the data
+
+```{r}
+# visualize all of the variables and relationships in a single plot
+ggpairs(data, mapping = aes(col = gender, alpha = 0.3),
+        lower = list(combo = wrap("facethist", bins = 20)))
+```
+
+From the visualization we can appreciate that the distributions of the
+variables does not differ much when the gender difference is taken into
+account. Only *age* variable has more outliers for females than males.\
+Two variable pairs show significant correlation: positive for *attitude*
+and *points*, and negative for *surf* and *deep*. Interestingly for the
+latter case (*surf* vs *deep*), the negative correlation is significant
+only for males.
+
+### Multiple regression
+
+```{r}
+# fit a model where points is the outcome variable and attitude, stra and surf are
+# the explanatory variables
+fit <- lm(Points ~ Attitude + stra + surf, data = data)
+# summary of fitted model
+summary(fit)
+```
+
+As the three explanatory variables I selected *attitude*, *stra* and
+*surf* since they are that shows the highest absolute correlation with
+the target variable.\
+From the summary we can get some information about the model:
+
+-   **Estimate** is the intercept (b0) and the b1 coefficient estimates
+    associated to each predictor variable.
+-   **Std.Error** is the standard error of the coefficient estimates,
+    representing the accuracy of the coefficients.
+-   **t value** represents the t-statistic
+-   **p-value** shows the significance of the relationship of the target
+    variable.
+
+Looking at the individual explanatory variables, only *attitude*, with a
+pvalue of \~1.9e-8, seems to give an important contribution to the
+model. The other variables don't show a significant pvalue. So, I'm
+removing them from the model.
+
+```{r}
+# fit a model where points is the outcome variable and attitude and stra are the
+# explanatory variables
+fit_2 <- lm(Points ~ Attitude + stra, data = data)
+# summary of fitted model
+summary(fit_2)
+
+# fit a model where points is the outcome variable and attitude is the explanatory
+# variable.
+fit_1 <- lm(Points ~ Attitude, data = data)
+# summary of fitted model
+summary(fit_1)
+```
+
+### Interpretation of multiple regression
+
+```{r}
+# summary of fitted model with only attitude as explanatory variable
+summary(fit_1)
+# plot the two variables
+ggplot(data = data, aes(x = Attitude, y = Points)) +
+    geom_point() +
+    geom_smooth(method = "lm")
+```
+
+The explanatory variable *attitude* is significant associated with the
+target variable *points* (pvalue is significant, 4.12e-09). Considering
+the formula $yi = β0 + β1xi$, from the summary we can appreciate that
+our model shows $β0$ = 11.6372 and $β1$ = 3.5255. This means that for
+each +1 of the explanatory variable, x, the target variable, y,
+increases of +3.5255.
+
+The fitted model has a *Multiple R-squared* of 0.1906, meaning that the
+\~19% of the variable of the target variable is explained by the
+explanatory variable.
+
+### Diagnostic plots
+
+```{r}
+# produce Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage 
+# diagnostic plots.
+par(mfrow = c(2,2))
+plot(fit_1, which = c(1,2,5))
+```
+
+-   **Residual vs Fitted plot** displays the residuals vs the fitted
+    values showing if the residuals have a non-linear pattern. If the
+    values equally spread around the horizontal line without showing any
+    pattern it means that non-linear relationships are not present into
+    the data.
+    -   It is the case for our model: the values are equally spread
+        (with few outliers though) and there is no evidence for any
+        problem in the model.
+-   **Normal QQ-plot** shows if the residuals are normally distributed:
+    if it's so, they are distributed on the dashed line.
+    -   Again, this plot doesn't show any issue. The values are quite
+        well placed along the line.
+-   **Residuals vs Laverage plot** displays Standardized residuals vs
+    leverage. In this plot values should not outside the Cook's distance
+    1.
+    -   Values are not outside the Cook's distance so no issues
+        detected.
