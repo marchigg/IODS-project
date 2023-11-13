@@ -145,15 +145,19 @@ plot(fit_1, which = c(1,2,5))
     values equally spread around the horizontal line without showing any
     pattern it means that non-linear relationships are not present into
     the data.
+
     -   It is the case for our model: the values are equally spread
         (with few outliers though) and there is no evidence for any
         problem in the model.
+
 -   **Normal QQ-plot** shows if the residuals are normally distributed:
     if it's so, they are distributed on the dashed line.
+
     -   Again, this plot doesn't show any issue. The values are quite
         well placed along the line.
+
 -   **Residuals vs Laverage plot** displays Standardized residuals vs
     leverage. In this plot values should not outside the Cook's distance
     1.
-    -   Values are not outside the Cook's distance so no issues
-        detected.
+
+    Values are not outside the Cook's distance so no issues detected.
