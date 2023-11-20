@@ -397,7 +397,7 @@ use R Markdown syntax.</em></p>
 <pre class="r"><code># This is a so-called &quot;R chunk&quot; where you can write R code.
 
 date()</code></pre>
-<pre><code>## [1] &quot;Mon Nov 20 14:18:10 2023&quot;</code></pre>
+<pre><code>## [1] &quot;Mon Nov 20 16:19:43 2023&quot;</code></pre>
 <p>The course started quite well and <em>smoothly</em>. I like the
 introduction by professor Kimmo and generally everything looks quite
 scheduled and organised. From the course I expect to improve my
@@ -425,7 +425,7 @@ writing and reading R code as well as statistical methods.</li>
 advanced methods you are using.</li>
 </ul>
 <pre class="r"><code>date()</code></pre>
-<pre><code>## [1] &quot;Mon Nov 20 14:18:10 2023&quot;</code></pre>
+<pre><code>## [1] &quot;Mon Nov 20 16:19:43 2023&quot;</code></pre>
 <pre class="r"><code># load the GGally and ggplot2 libraries
 library(GGally)</code></pre>
 <pre><code>## Loading required package: ggplot2</code></pre>
@@ -665,7 +665,7 @@ writing and reading R code as well as statistical methods.</li>
 advanced methods you are using.</li>
 </ul>
 <pre class="r"><code>date()</code></pre>
-<pre><code>## [1] &quot;Mon Nov 20 14:18:25 2023&quot;</code></pre>
+<pre><code>## [1] &quot;Mon Nov 20 16:19:53 2023&quot;</code></pre>
 <pre class="r"><code># load libraries
 library(ggplot2)
 library(dplyr)</code></pre>
@@ -791,32 +791,40 @@ summary(fit)</code></pre>
 ## Number of Fisher Scoring iterations: 4</code></pre>
 <pre class="r"><code>OR &lt;- coef(fit) %&gt;% exp
 # compute confidence intervals (CI)
-CI &lt;- confint(fit)</code></pre>
+CI &lt;- confint(fit) %&gt;% exp</code></pre>
 <pre><code>## Waiting for profiling to be done...</code></pre>
 <pre class="r"><code>CI</code></pre>
-<pre><code>##                   2.5 %     97.5 %
-## (Intercept) -7.31314994 -0.4468887
-## sexM         0.23892462  1.2215758
-## age          0.01490094  0.4139863
-## studytime   -0.83431855 -0.1998010
-## famsupyes   -0.34642805  0.6356899</code></pre>
+<pre><code>##                    2.5 %    97.5 %
+## (Intercept) 0.0006667136 0.6396151
+## sexM        1.2698828036 3.3925294
+## age         1.0150125081 1.5128364
+## studytime   0.4341702473 0.8188937
+## famsupyes   0.7072097008 1.8883245</code></pre>
 <pre class="r"><code># print out the odds ratios with their confidence intervals
 cbind(OR, CI)</code></pre>
-<pre><code>##                     OR       2.5 %     97.5 %
-## (Intercept) 0.02150485 -7.31314994 -0.4468887
-## sexM        2.06838548  0.23892462  1.2215758
-## age         1.23609527  0.01490094  0.4139863
-## studytime   0.60193318 -0.83431855 -0.1998010
-## famsupyes   1.14948947 -0.34642805  0.6356899</code></pre>
-<p>As observed from the data visualization, sex, age and studytime are
-important predictor of alcohol consumption. Male students are indeed
-significantly more prone to abuse alcohol compared to females. Age
-correlates too: the older the students are the higher the alcohol
-consumption gets. Furethermore, as predicted and observed from the
-plots, studytime inversely correlates with with alcohol abuse. Famsup,
-on the other hand, is not correlated with the consumption: while minor
-effect is observed but that is not statistically significant (pvalue =
-0.58).</p>
+<pre><code>##                     OR        2.5 %    97.5 %
+## (Intercept) 0.02150485 0.0006667136 0.6396151
+## sexM        2.06838548 1.2698828036 3.3925294
+## age         1.23609527 1.0150125081 1.5128364
+## studytime   0.60193318 0.4341702473 0.8188937
+## famsupyes   1.14948947 0.7072097008 1.8883245</code></pre>
+<p>As observed from the data visualization, <em>sex</em>, <em>age</em>
+and <em>studytime</em> are significant predictor of alcohol
+consumption.<br />
+Male students are indeed significantly more prone to abuse alcohol
+compared to females: with an OR of ~2.1, making <em>age</em> the most
+important predictor in the model. However, the CIs are quite wide,
+making this variable not very stable.<br />
+<em>Age</em> correlates too: the older the students are the higher the
+alcohol consumption gets, with an OR of ~1.2. The CIs are quite narrow,
+suggesting for a good stability of this predictor.<br />
+Furethermore, as predicted and observed from the plots,
+<em>studytime</em> inversely correlates with with alcohol abuse, OR is
+~0.6. Again, CIs are narrow.<br />
+<em>famsup</em>, on the other hand, is not correlated with the
+consumption: while minor effect is observed (OR is ~1.14), that is not
+statistically significant (pvalue = 0.58) and CIs contain 1, allowing
+for the possibility that the OR is 1.</p>
 </div>
 <div id="prediction" class="section level3">
 <h3>Prediction</h3>
@@ -864,6 +872,13 @@ loss_func &lt;- function(class, prob) {
 # call loss_func to compute the average number of wrong predictions in the (training) data
 loss_func(class = alc$high_use, prob = alc$probability)</code></pre>
 <pre><code>## [1] 0.2891892</code></pre>
+<p>My model has a average number of wrong predictions of ~0.29, that is
+quite good. Compared to a simple guessing strategy, taht would result in
+a wrong prediction value of 0.5, it is much better.<br />
+Anyway, the goodness of a prediction tool is highly study-specific and
+many evaluation criteria should be taken into account. In summary my
+model is not bad but not perfect either and a better predictors choice
+could be made.</p>
 </div>
 <div id="fold-cross-validation" class="section level3">
 <h3>10-fold cross validation</h3>
@@ -872,7 +887,7 @@ cv &lt;- cv.glm(data = alc, cost = loss_func, glmfit = fit1, K = 10)
 
 # average number of wrong predictions in the cross validation
 cv$delta[1]</code></pre>
-<pre><code>## [1] 0.2891892</code></pre>
+<pre><code>## [1] 0.2918919</code></pre>
 <p>The prediction error of my model using 10-fold cross-validation is
 ~0.29, meaning that my model is worse than the one introduced in the
 Exercise Set.<br />
