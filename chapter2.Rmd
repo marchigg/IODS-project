@@ -157,7 +157,6 @@ plot(fit_1, which = c(1,2,5))
         well placed along the line.
 
 -   **Residuals vs Laverage plot** displays Standardized residuals vs
-    leverage. In this plot values should not outside the Cook's distance
-    1.
+    leverage. In this plot values should not outside the Cook's distance 1.  
 
-    Values are not outside the Cook's distance so no issues detected.
+    -   Values are not outside the Cook's distance so no issues detected.

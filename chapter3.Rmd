@@ -1,0 +1,175 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Logistic regression
+
+*Describe the work you have done this week and summarize your learning.*
+
+-   Describe your work and results clearly.
+-   Assume the reader has an introductory course level understanding of
+    writing and reading R code as well as statistical methods.
+-   Assume the reader has no previous knowledge of your data or the more
+    advanced methods you are using.
+
+```{r}
+date()
+
+# load libraries
+library(ggplot2)
+library(dplyr)
+library(boot)
+library(tidyr)
+```
+
+
+
+### Description of the data
+```{r}
+# load the alc dataset
+alc <- read.table("data/alc.csv", sep = '\t', header = T)
+# print out the names of the variables and describe the data set briefly
+colnames(alc)
+```
+
+The dataset is the result of the merging of two identical questionnaires including
+student grades, demographic, social and school related features related to secondary
+school student alcohol consumption in Portugal. The two original questionnaires
+report the performance in two distinct subjects: mathematics and Portuguese language. \
+The two questionnaires were merged using the common variables (columns); the questionnaire-specific
+columns were merged by calculating the mean of the ones with numeric data and by
+reporting the results of the mathematics questionnaire of the ones with non numeric
+data.
+
+
+
+### Making hypothesis
+```{r}
+# draw a bar plot of each variable
+gather(alc) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+```
+
+Looking at the variables, here are the four hypotheses for possible alcohol consupton
+relationships:
+
+-   *sex* is an important variable since previous studies reported that males
+teenagers/young adults show a higher alcohol consuption compareed to females of the
+same age.
+-   *age* is important too since people around 18-22 y/o consume more alcohol than 
+younger peers.
+-   *studytime* can be associated with alcohol consumption since students who spend 
+more time studying are less prone to abuse alcohol.
+-   finally *famsup* can be associated too. Students with more family educational
+support are maybe less prone to abuse alcohol.
+
+
+
+### Distributions of chosen variables
+```{r}
+# sex
+data <- data.frame(sex = c("M", "F"), 
+           high_alc = c(nrow(alc[alc$sex == "M" & alc$high_use == TRUE,]),
+                        nrow(alc[alc$sex == "F" & alc$high_use == TRUE,])),
+           low_alc = c(nrow(alc[alc$sex == "M" & alc$high_use == FALSE,]),
+                       nrow(alc[alc$sex == "F" & alc$high_use == FALSE,])))
+rownames(data) <- data[,1]
+data <- data[,-1]
+barplot(as.matrix(data) , beside=T,col=c("blue" , "red") , ylab="")
+
+# age
+ggplot(alc, aes(x = high_use, y = age)) +
+  geom_boxplot() + xlab("high alcohol consumption") + ylab("age") +
+  theme_classic()
+
+# studytime
+ggplot(alc, aes(x = high_use, y = studytime)) +
+  geom_boxplot() + xlab("high alcohol consumption") + ylab("studytime") +
+  theme_classic()
+
+# famsup
+data <- data.frame(famsup = c("yes", "no"), 
+           high_alc = c(nrow(alc[alc$famsup == "yes" & alc$high_use == TRUE,]),
+                        nrow(alc[alc$famsup == "no" & alc$high_use == TRUE,])),
+           low_alc = c(nrow(alc[alc$famsup == "yes" & alc$high_use == FALSE,]),
+                       nrow(alc[alc$famsup == "no" & alc$high_use == FALSE,])))
+rownames(data) <- data[,1]
+data <- data[,-1]
+barplot(as.matrix(data) , legend.text = T, beside=T,col=c("darkgreen" , "purple"),
+        ylab="", main= "famsup")
+```
+
+According to my hypothesis, male students seem to have a higher alcohol consumption
+compared to female peers. The same goes for age: older students seem to have a
+higher alcohol consumption. Interestingly, studytime looks a very important predictor
+of alcohol abuse, even more than sex. The effect of famsup on the consumption is
+hard to establish from the plot: it seems that an effect is actually present but 
+it is not as significant as for the other predictors.
+
+
+
+### Logistic regression
+```{r}
+fit <- glm(high_use ~ sex + age + studytime + famsup , data = alc, family = "binomial")
+summary(fit)
+
+
+
+OR <- coef(fit) %>% exp
+# compute confidence intervals (CI)
+CI <- confint(fit)
+CI
+# print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+```
+
+
+As observed from the data visualization, sex, age and studytime are important
+predictor of alcohol consumption. Male students are indeed significantly more
+prone to abuse alcohol compared to females. Age correlates too: the older the
+students are the higher the alcohol consumption gets. Furethermore, as predicted
+and observed from the plots, studytime inversely correlates with with alcohol abuse.
+Famsup, on the other hand, is not correlated with the consumption: while minor
+effect is observed but that is not statistically significant (pvalue = 0.58).
+
+
+
+### Prediction
+```{r}
+fit1 <- glm(high_use ~ sex + age + studytime, data = alc, family = "binomial")
+summary(fit1)
+# predict() the probability of high_use
+probabilities <- predict(fit1, type = "response")
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+# define a loss function (mean prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# call loss_func to compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+```
+
+
+
+### 10-fold cross validation
+```{r}
+# K-fold cross-validation
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = fit1, K = 10)
+
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+
+The prediction error of my model using 10-fold cross-validation is ~0.29, meaning
+that my model is worse than the one introduced in the Exercise Set. \
+A better prediction variables selection is needed to improve my model.
+
