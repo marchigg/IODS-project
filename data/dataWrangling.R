@@ -28,7 +28,7 @@ deep_columns <- select(learn, one_of(deep_questions))
 # and create column 'deep' by averaging
 learn$deep <- rowMeans(deep_columns)
 
-# select the columns related to surface learning 
+# select the columns related to surface learning     
 surface_columns <- select(learn, one_of(surface_questions))
 # and create column 'surf' by averaging
 learn$surf <- rowMeans(surface_columns)
