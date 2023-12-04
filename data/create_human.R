@@ -39,3 +39,46 @@ gii$Labo.FM <- gii$Labo.F / gii$Labo.M
 # join the datasets
 human <- merge(hd, gii, by = "Country")
 write_csv(human, "data/human.csv")
+
+
+
+
+# Giovanni Marchi
+# Mon Dec 3 2023
+# Script with R code for Assignment5 data wrangling.
+
+# explore the structure and the dimensions of the 'human' data
+str(human)
+dim(human)
+
+# the dataset has 195 observations (countries) and 19 variables. The variables are
+# indicators of quality of life:
+colnames(human)
+
+
+
+
+# store indicator for non-county lines
+human$non_country <- ""
+human$non_country <- ifelse(is.na(human$`HDI Rank`), TRUE, FALSE)
+# keep only selected variables
+keep <- c("Country", "Edu2.FM", "Labo.FM", "Edu.Exp", "Life.Exp", "GNI", "Mat.Mor",
+          "Ado.Birth", "Parli.F", "non_country")
+human <- human[, keep]
+
+
+
+
+# remove all rows with missing values
+human <- human[complete.cases(human),]
+
+
+
+# remove the observations which relate to regions instead of countries.
+human <- human[human$non_country == FALSE,]
+human$non_country <- NULL
+
+
+
+# save again the dataset
+write_csv(human, "data/human.csv")
