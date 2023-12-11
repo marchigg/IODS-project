@@ -101,11 +101,14 @@ barplot(as.matrix(data) , legend.text = T, beside=T,col=c("darkgreen" , "purple"
 ```
 
 According to my hypothesis, male students seem to have a higher alcohol consumption
-compared to female peers. The same goes for age: older students seem to have a
-higher alcohol consumption. Interestingly, studytime looks a very important predictor
-of alcohol abuse, even more than sex. The effect of famsup on the consumption is
-hard to establish from the plot: it seems that an effect is actually present but 
-it is not as significant as for the other predictors.
+compared to female peers, resulting in *sex* having an important role in alcohol
+abuse prediction. The same goes for *age*: older students seem to have a
+higher alcohol consumption. \
+Interestingly, *studytime* looks a very important predictor of alcohol abuse,
+even more than sex. \
+The effect of *famsup* on the consumption is hard to establish from the plot: it
+seems that an effect is actually present but it is not as significant as for the
+other predictors.
 
 
 
@@ -125,19 +128,13 @@ cbind(OR, CI)
 ```
 
 
-As observed from the data visualization, *sex*, *age* and *studytime* are significant
-predictor of alcohol consumption. \
-Male students are indeed significantly more prone to abuse alcohol compared to
-females: with an OR of ~2.1, making *age* the most important predictor in the
-model. However, the CIs are quite wide, making this variable not very stable. \
-*Age* correlates too: the older the students are the higher the alcohol consumption
-gets, with an OR of ~1.2. The CIs are quite narrow, suggesting for a good stability
-of this predictor. \
-Furethermore, as predicted and observed from the plots, *studytime* inversely correlates
-with with alcohol abuse, OR is ~0.6. Again, CIs are narrow. \
-*famsup*, on the other hand, is not correlated with the consumption: while minor
-effect is observed (OR is ~1.14), that is not statistically significant (pvalue
-= 0.58) and CIs contain 1, allowing for the possibility that the OR is 1.
+As observed from the data visualization, sex, age and studytime are important
+predictor of alcohol consumption. Male students are indeed significantly more
+prone to abuse alcohol compared to females. Age correlates too: the older the
+students are the higher the alcohol consumption gets. Furethermore, as predicted
+and observed from the plots, studytime inversely correlates with with alcohol abuse.
+Famsup, on the other hand, is not correlated with the consumption: while minor
+effect is observed but that is not statistically significant (pvalue = 0.58).
 
 
 
@@ -163,12 +160,7 @@ loss_func <- function(class, prob) {
 # call loss_func to compute the average number of wrong predictions in the (training) data
 loss_func(class = alc$high_use, prob = alc$probability)
 ```
-My model has a average number of wrong predictions of ~0.29, that is quite good.
-Compared to a simple guessing strategy, taht would result in a wrong prediction
-value of 0.5, it is much better. \
-Anyway, the goodness of a prediction tool is highly study-specific and many evaluation
-criteria should be taken into account. In summary my model is not bad but not 
-perfect either and a better predictors choice could be made.
+
 
 
 ### 10-fold cross validation

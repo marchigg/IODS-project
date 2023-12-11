@@ -1,0 +1,342 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Analysis of longitudinal data
+
+*Describe the work you have done this week and summarize your learning.*
+
+-   Describe your work and results clearly.
+-   Assume the reader has an introductory course level understanding of
+    writing and reading R code as well as statistical methods.
+-   Assume the reader has no previous knowledge of your data or the more
+    advanced methods you are using.
+
+```{r}
+date()
+
+# load the GGally and ggplot2 libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lme4)
+```
+
+## Part I
+
+### Description of the RAT data
+
+First of all, let's have a look at the data and give a brief description
+of the dataset.
+
+```{r}
+# Read the RATS data
+RATS <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/rats.txt",
+                   sep = "\t", header = T)
+
+# Look at the (column) names of RATS
+names(RATS)
+
+# Look at the structure of RATS
+str(RATS)
+
+# Print out summaries of the variables
+summary(RATS)
+```
+
+The RATS dataset in the wide data form: we have 16 subjects, rats, that
+are split into three groups and biological measurements are taken for
+each rat every week. Time points are **WD1**, **WD8**, **WD15**,
+**WD22**, **WD29**, **WD36**, **WD43**, **WD44**, **WD50**, **WD57** and
+**WD64**.
+
+### Graphical Displays of Longitudinal Data
+
+```{r}
+# convert the ID and Group columns to factors
+RATS$ID <- factor(RATS$ID)
+RATS$Group <- factor(RATS$Group)
+
+# convert to longitudinal form
+RATS_L <- pivot_longer(RATS, cols = -c(ID, Group), names_to = "WD",
+                     values_to = "Weight") %>%
+  mutate(Time = as.integer(substr(WD, 3,4))) %>%
+  arrange(Time)
+
+dim(RATS_L)
+glimpse(RATS_L)
+```
+
+Now the dataset is in the longitudinal form. In the wide form, we had
+one line per each rat where variables were the groups and the
+time-points when the biological measurements were taken. However, in the
+longitudinal form, we have as many lines as many rats \* time points
+(and 16 \* 11): each line now is rat #1 - time point #1 - biological
+measurement for time point #1.
+
+```{r}
+# draw the plot
+ggplot(RATS_L, aes(x = Time, y = Weight, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(RATS_L$Weight), max(RATS_L$Weight)))
+```
+
+From this first plot, we can already appreciate that the weight of
+almost all the rats tend to increase during the treatment. Also, we can
+observe the tracking phenomenon (rats whose weight was high at the
+beginning weight more throughout the study).\
+However, the non-standardized nature of the data makes drawing
+conclusions hard.
+
+```{r}
+# standardise the variable Weight
+RATS_L_st <- RATS_L %>%
+  group_by(Time) %>%
+  mutate(Weight_st = (Weight - mean(Weight))/sd(Weight)) %>%
+  ungroup()
+# look at the data
+glimpse(RATS_L_st)
+# plot again with the standardised Weight
+ggplot(RATS_L_st, aes(x = Time, y = Weight_st, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  scale_y_continuous(name = "standardized weight")
+
+
+# summary data with mean and standard error of weight by treatment and week 
+RATS_L_st_se <- RATS_L_st %>%
+  group_by(Group, Time) %>%
+  summarise( mean = mean(Weight), se = (sd(Weight)/sqrt(Weight)) ) %>%
+  ungroup()
+
+glimpse(RATS_L_st_se)
+
+# plot the mean profiles
+ggplot(RATS_L_st_se, aes(x = Time, y = mean, linetype = Group, shape = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = c(1,2,3)) +
+  geom_point(size=3) +
+  scale_shape_manual(values = c(1,2,3)) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se, linetype="1"), width=0.3) +
+  theme(legend.position = c(0.9,0.5)) +
+  scale_y_continuous(name = "mean(Weight) +/- se(Weight)")
+```
+
+From this last plot, showing average profiles for each rats group with
+mean and standard error at each time point, we can see that there is no
+overlap in the means of the rat groups.
+
+### Another visualization
+
+```{r}
+# create a summary data by Group and ID with mean as the summary variable
+# (ignoring baseline Time 1)
+RATS_S <- RATS_L %>%
+  filter(Time > 1) %>%
+  group_by(Group, ID) %>%
+  summarise( mean=mean(Weight) ) %>%
+  ungroup()
+
+glimpse(RATS_S)
+
+# draw a boxplot of the mean versus Group
+ggplot(RATS_S, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(Weight), Days 1-64")
+```
+
+The created boxplots reflect quite well what we observed from the
+previous plots. This plot also shows that the variability of Group 3 is
+the smallest. All the groups are characterized by the presence of an
+outlier each: we can try to remove them.
+
+```{r}
+# Create a new data by filtering the outlier and adjust the ggplot code the draw the plot again with the new data
+RATS_S_clean <- RATS_S[!(RATS_S$Group == 3 & RATS_S$mean < 500),] %>%
+  subset(mean < 590) %>% subset(mean > 240)
+
+# plot again
+ggplot(RATS_S_clean, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(Weight), Days 1-64")
+```
+
+### ANOVA
+
+Since t-test require 2 levels (Groups) and we have 3 of them, such test
+can't be applied. Let's move to ANOVA instead
+
+```{r}
+# Add the RATS_S from the original data as a new variable to the summary data
+RATS_S <- RATS_S %>%
+  mutate(baseline = RATS$WD1)
+
+# Fit the linear model with the mean as the response 
+fit1 <- lm(mean ~ baseline + Group, data = RATS_S)
+summary(fit1)
+# Compute the analysis of variance table for the fitted model with anova()
+anova(fit1)
+```
+Looking at the model and at the ANOVA testing, when the baseline is taken into
+account, the groups don't seem to be significantly different anymore. In other
+words, the baseline is  explaining most of variability between the two groups.
+
+## Part II
+
+### Description of the BPRS data
+
+First of all, let's have a look at the data and give a brief description
+of the dataset.
+
+```{r}
+# Read the BPRS data
+BPRS <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/BPRS.txt",
+                   sep = " ", header = T)
+
+# Look at the (column) names of RATS
+names(BPRS)
+
+# Look at the structure of RATS
+str(BPRS)
+
+# Print out summaries of the variables
+summary(BPRS)
+```
+
+The BPRS dataset in the wide data form: we have 40 subjects, men, that
+are split into two groups and biological measurements are taken for each
+man every week, from week0 (baseline measurement) to week8.
+
+### Convert to longitudinal form
+
+```{r}
+# convert categorical variables to factors
+BPRS$treatment <- factor(BPRS$treatment)
+BPRS$subject <- factor(BPRS$subject)
+# convert to longitudinal form
+BPRS_L <-  pivot_longer(BPRS, cols= -c(treatment,subject), names_to = "weeks",
+                       values_to = "bprs") %>% arrange(weeks)
+BPRS_L <-  BPRS_L %>% mutate(week = as.integer(substr(weeks,5,5)))
+```
+
+Now the dataset is in the longitudinal form. In the wide form, we had
+one line per each man where variables were the groups and the
+time-points when the biological measurements were taken. However, in the
+longitudinal form, we have as many lines as many men \* time points (and
+40 \* 9): each line now is man #1 - time point #1 - biological
+measurement for time point #1.
+
+### Visualise the data
+
+```{r}
+# plot the RATSL data
+ggplot(BPRS_L, aes(x = week, y = bprs, group = interaction(subject, treatment))) +
+  geom_line(aes(linetype = treatment )) + 
+  scale_y_continuous(name = "bprs") + 
+  theme(legend.position = "top")
+```
+
+Looking at the plot, it looks like there's no difference in the effect
+of the two different treatments since the lines from the two groups
+overlap quite well.
+
+### Linear model
+
+```{r}
+# create a regression model RATS_reg
+fit_BPRS <- lm(bprs ~ week + treatment, data = BPRS_L)
+
+# print out a summary of the model
+summary(fit_BPRS)
+```
+
+From the fitted linear model, we can see that time (week variable) is
+very significant in the regression. Treatment2 doesn't look important
+though. However, the independence assumption is violated, so we would need a random
+intercept model.
+
+### The Random Intercept Model
+As explained before, the linear model assumes independence of the repeated measures
+of bprs, but it's not the case: we need to fit a random intercept model for the
+same two explanatory variables, week and treatment. This will allow the
+linear regression fit for each man to differ in intercept from other men.
+
+```{r}
+library(lmerTest)
+# Create a random intercept model
+fit_BPRS_2 <- lmer(bprs ~ week + treatment + (1 | subject), data = BPRS_L,
+                   REML = FALSE)
+
+# Print the summary of the model
+summary(fit_BPRS_2)
+```
+
+From the Random Intercept Model we can have a look at the random effects. The
+**subject** derived effect looks to be very important in the model. This can be
+observed by the fact that t.test is given by estimate (variance, in this case
+104.21) / SD (SD = SE/sqrt(sample size)): if the resulting t.test is > abs(1.93),
+then the pvalue is significant and the effect is significant as well. \
+by running this model wich takes into account the randomness coming from the 
+**subject**, we correct the fixed effects and now we can trust these results
+
+### Slippery slopes: Random Intercept and Random Slope Model
+
+Now we can move on to fit the random intercept and random slope model.
+Fitting a random intercept and random slope model allows the linear
+regression fits for each individual to differ in intercept but also in
+slope.
+
+```{r}
+fit_BPRS_3 <- lmer(bprs ~ week + treatment + (week | subject), data = BPRS_L,
+                   REML = FALSE)
+
+# print a summary of the model
+summary(fit_BPRS_3)
+
+# perform an ANOVA test on the two models
+anova(fit_BPRS_3, fit_BPRS_2)
+```
+When adding **week** as a random effect, we improve the model (anova testing results
+in a pvalue < 0.05). This means that **week** is important as well as random
+effect.
+
+
+### Random Intercept and Random Slope Model with interaction
+
+```{r}
+# create a random intercept and random slope model with the interaction
+fit_BPRS_interaction <- lmer(bprs ~ week * treatment + (week | subject), data = BPRS_L,
+                   REML = FALSE)
+
+# print a summary of the model
+summary(fit_BPRS_interaction)
+
+# perform an ANOVA test on the two models
+anova(fit_BPRS_interaction, fit_BPRS_3)
+
+# plot the RATSL data
+ggplot(BPRS_L, aes(x = week, y = bprs, group = interaction(subject, treatment))) +
+  geom_line(aes(linetype = treatment )) + 
+  scale_y_continuous(name = "bprs") + 
+  theme(legend.position = "top")
+
+# Create a vector of the fitted values and add to BPRS_L
+Fitted <- fitted(fit_BPRS_interaction)
+BPRS_L$fitted <- Fitted
+
+# plot the RATSL data
+ggplot(BPRS_L, aes(x = week, y = fitted, group = interaction(subject, treatment))) +
+  geom_line(aes(linetype = treatment )) + 
+  scale_y_continuous(name = "bprs") + 
+  theme(legend.position = "top")
+```
+Finally, when we fit a model with the interaction between **week** and **treatment**
+we get no significant difference from the previous one (anova pvalue > 0.05).
